@@ -157,8 +157,8 @@ team_col = "posteam" if "posteam" in pbp.columns else ("pos_team" if "pos_team" 
 if pid_col:
     roster_pl = nfl.load_rosters_weekly(seasons=seasons)
 roster = roster_pl.select(["player_id", "position"]).unique().to_pandas()
-    pbp = pbp.merge(roster, left_on=pid_col, right_on="player_id", how="left")
-    pbp = pbp[pbp["position"] == "QB"].drop(columns=["player_id","position"])
+pbp = pbp.merge(roster, left_on=pid_col, right_on="player_id", how="left")
+pbp = pbp[pbp["position"] == "QB"].drop(columns=["player_id","position"])
 
 # drop invalid rows
 if team_col:
@@ -311,5 +311,6 @@ st.dataframe(agg.sort_values(y_col, ascending=False), use_container_width=True)
 buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
 st.download_button("Download chart PNG", data=buf.getvalue(), file_name="qb_scatter.png", mime="image/png")
+
 
 

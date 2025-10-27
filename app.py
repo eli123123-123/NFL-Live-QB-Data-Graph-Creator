@@ -9,6 +9,10 @@ import streamlit as st
 from nfl_data_py import import_pbp_data
 from matplotlib.ticker import MaxNLocator, MultipleLocator
 from nfl_data_py import import_weekly_rosters
+from nfl_data_py import import_pbp_data
+from nfl_data_py import import_weekly_rosters
+import nflreadpy as nfl
+
 TEAM_META = {
  "ARI": ("NFC","West"), "ATL": ("NFC","South"), "BAL": ("AFC","North"), "BUF": ("AFC","East"),
  "CAR": ("NFC","South"), "CHI": ("NFC","North"), "CIN": ("AFC","North"), "CLE": ("AFC","North"),
@@ -39,15 +43,11 @@ def normalize_abbr(abbr: str) -> str:
     }
     return aliases.get(a, a)
 
-
 @st.cache_data
 def load_pbp(seasons):
-    df = import_pbp_data(seasons)
-    # keep pass plays by QBs only
-    df = df[df["pass"] == 1].copy()
-    # drop obvious junk rows
-    df = df[~df["passer"].isna()]
-    return df
+    # nflreadpy returns a Polars DataFrame; convert to pandas for the rest of your code
+    pbp_pl = nfl.load_pbp(seasons=seasons)
+    return pbp_pl.to_pandas()
 
 
 
@@ -156,7 +156,8 @@ pname_col = "passer" if "passer" in pbp.columns else ("passer_player_name" if "p
 team_col = "posteam" if "posteam" in pbp.columns else ("pos_team" if "pos_team" in pbp.columns else None)
 # keep only players whose roster position is QB
 if pid_col:
-    roster = import_weekly_rosters(seasons)[["player_id","position"]].drop_duplicates("player_id")
+    roster_pl = nfl.load_rosters_weekly(seasons=seasons)
+    roster = roster_pl.select(["player_id", "position"]).unique().to_pandas()
     pbp = pbp.merge(roster, left_on=pid_col, right_on="player_id", how="left")
     pbp = pbp[pbp["position"] == "QB"].drop(columns=["player_id","position"])
 
@@ -311,3 +312,4 @@ st.dataframe(agg.sort_values(y_col, ascending=False), use_container_width=True)
 buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
 st.download_button("Download chart PNG", data=buf.getvalue(), file_name="qb_scatter.png", mime="image/png")
+

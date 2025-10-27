@@ -26,7 +26,7 @@ TEAM_META = {
 st.cache_data.clear()
 
 
-st.set_page_config(page_title="QB Scatter with Logos", layout="wide")
+st.set_page_config(page_title="QB Chart Maker", layout="wide")
 
 def normalize_abbr(abbr: str) -> str:
     if not isinstance(abbr, str):
@@ -153,10 +153,20 @@ pname_col = "passer" if "passer" in pbp.columns else ("passer_player_name" if "p
 team_col = "posteam" if "posteam" in pbp.columns else ("pos_team" if "pos_team" in pbp.columns else None)
 # keep only players whose roster position is QB
 if pid_col:
-    roster_pl = nfl.load_rosters_weekly(seasons=seasons)
-roster = roster_pl.select(["player_id", "position"]).unique().to_pandas()
-pbp = pbp.merge(roster, left_on=pid_col, right_on="player_id", how="left")
-pbp = pbp[pbp["position"] == "QB"].drop(columns=["player_id","position"])
+    # Load weekly rosters (Polars) and convert to pandas
+roster_pl = nfl.load_rosters_weekly(seasons=seasons)
+roster_df = roster_pl.to_pandas()
+
+# Try to find sensible id/position columns across seasons/vendors
+id_col  = next((c for c in ["player_id", "gsis_id", "nfl_id"] if c in roster_df.columns), None)
+pos_col = next((c for c in ["position", "pos"] if c in roster_df.columns), None)
+
+if id_col and pos_col and pid_col:
+    roster = roster_df[[id_col, pos_col]].drop_duplicates(id_col).copy()
+    roster.columns = ["player_id", "position"]  # normalize names
+    pbp = pbp.merge(roster, left_on=pid_col, right_on="player_id", how="left")
+    pbp = pbp[pbp["position"] == "QB"].drop(columns=["player_id", "position"])
+# else: fall back to no roster-based QB filter if columns aren't present
 
 # drop invalid rows
 if team_col:
@@ -252,6 +262,25 @@ if y_col in count_cols:
 x = agg[x_col].astype(float)
 y = agg[y_col].astype(float)
 
+# Expand axes so logos/labels are inside the frame
+xmin, xmax = float(x.min()), float(x.max())
+ymin, ymax = float(y.min()), float(y.max())
+
+# guard against zero-range axes
+if xmin == xmax:
+    xmin -= 1.0
+    xmax += 1.0
+if ymin == ymax:
+    ymin -= 1.0
+    ymax += 1.0
+
+xpad = (xmax - xmin) * 0.12   # horizontal padding (~12%)
+ypad = (ymax - ymin) * 0.15   # vertical padding (~15%)
+
+ax.set_xlim(xmin - xpad, xmax + xpad)
+ax.set_ylim(ymin - ypad, ymax + ypad)
+ax.margins(0)  # we’re managing padding manually
+
 # League averages
 if show_avg:
     ax.axvline(x.mean(), color="gray", linewidth=1)
@@ -309,6 +338,7 @@ st.dataframe(agg.sort_values(y_col, ascending=False), use_container_width=True)
 buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
 st.download_button("Download chart PNG", data=buf.getvalue(), file_name="qb_scatter.png", mime="image/png")
+
 
 
 

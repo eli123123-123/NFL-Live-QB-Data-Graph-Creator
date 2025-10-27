@@ -6,11 +6,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import streamlit as st
-from nfl_data_py import import_pbp_data
+import nflreadpy as nfl           
 from matplotlib.ticker import MaxNLocator, MultipleLocator
-from nfl_data_py import import_weekly_rosters
-import nflreadpy as NFL
-import nflreadpy as nfl
+
 
 
 TEAM_META = {
@@ -311,6 +309,7 @@ st.dataframe(agg.sort_values(y_col, ascending=False), use_container_width=True)
 buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
 st.download_button("Download chart PNG", data=buf.getvalue(), file_name="qb_scatter.png", mime="image/png")
+
 
 
 

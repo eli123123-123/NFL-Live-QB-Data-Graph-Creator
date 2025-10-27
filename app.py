@@ -153,9 +153,8 @@ pname_col = "passer" if "passer" in pbp.columns else ("passer_player_name" if "p
 team_col = "posteam" if "posteam" in pbp.columns else ("pos_team" if "pos_team" in pbp.columns else None)
 # keep only players whose roster position is QB
 if pid_col:
-    # Load weekly rosters (Polars) and convert to pandas
-roster_pl = nfl.load_rosters_weekly(seasons=seasons)
-roster_df = roster_pl.to_pandas()
+  roster_pl = nfl.load_rosters_weekly(seasons=seasons)
+  roster_df = roster_pl.to_pandas()
 
 # Try to find sensible id/position columns across seasons/vendors
 id_col  = next((c for c in ["player_id", "gsis_id", "nfl_id"] if c in roster_df.columns), None)
@@ -338,6 +337,7 @@ st.dataframe(agg.sort_values(y_col, ascending=False), use_container_width=True)
 buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
 st.download_button("Download chart PNG", data=buf.getvalue(), file_name="qb_scatter.png", mime="image/png")
+
 
 
 

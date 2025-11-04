@@ -404,8 +404,15 @@ if show_trend and len(agg) >= 3:
     add_trendline(ax, x, y)
 
 ax.set_title(f"{position} scatter  {', '.join(map(str, seasons))}  weeks {week_min}-{week_max}  {min_label.lower()} {int(volume_threshold)}")
-st.pyplot(fig, clear_figure=True)
 
+# Save BEFORE rendering (or keep clear_figure=False)
 buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
-st.download_button("Download chart PNG", data=buf.getvalue(), file_name="nfl_graph.png", mime="image/png")
+buf.seek(0)
+png_bytes = buf.getvalue()
+
+st.pyplot(fig, clear_figure=False)
+
+# Download button
+st.download_button("Download chart PNG", data=png_bytes, file_name="nfl_graph.png", mime="image/png")
+

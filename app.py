@@ -8,6 +8,10 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import streamlit as st
 import nflreadpy as nfl
 from matplotlib.ticker import MaxNLocator, MultipleLocator
+import os
+STRIPE_SECRET = os.getenv("STRIPE_SECRET", "")
+ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
+
 
 # ---------------- constants and helpers ----------------
 
@@ -415,4 +419,5 @@ st.pyplot(fig, clear_figure=False)
 
 # Download button
 st.download_button("Download chart PNG", data=png_bytes, file_name="nfl_graph.png", mime="image/png")
+
 

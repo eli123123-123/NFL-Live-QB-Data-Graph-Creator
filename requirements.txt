@@ -1,4 +1,3 @@
-# versions known to work on Render (no compiling)
 numpy==2.1.3
 pandas==2.2.3
 pyarrow==14.0.2

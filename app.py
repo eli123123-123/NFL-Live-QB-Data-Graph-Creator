@@ -2,6 +2,7 @@ import io
 import requests
 import numpy as np
 import pandas as pd
+import polars as pl
 import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
@@ -35,11 +36,25 @@ def normalize_abbr(abbr: str) -> str:
     a = abbr.upper()
     aliases = {"LA": "LAR", "STL": "LAR", "SD": "LAC", "OAK": "LV", "WSH": "WAS", "JAC": "JAX"}
     return aliases.get(a, a)
-
-@st.cache_data
-def load_pbp(seasons):
-    pbp_pl = nfl.load_pbp(seasons=seasons)   # pulls latest published nflverse data
-    return pbp_pl.to_pandas()
+@st.cache_data(ttl=1800, show_spinner="Loading play-by-play…")
+def load_pbp(seasons: list[int]) -> pl.DataFrame:
+    """
+    Load PBP using nflreadpy into a Polars DataFrame and keep only the
+    columns we actually use. Returning Polars keeps memory low.
+    """
+    pl_df = nfl.load_pbp(seasons=seasons)  # returns Polars
+    cols = [
+        "week", "posteam",
+        "pass", "sack", "qb_scramble", "scramble",
+        "pass_attempt", "complete_pass", "yards_gained",
+        "pass_touchdown", "interception",
+        "epa", "cpoe", "air_yards",
+        "play_id",
+        # possible passer id/name variants across seasons/vendors:
+        "passer_id", "passer", "passer_player_id", "passer_player_name",
+    ]
+    keep = [c for c in cols if c in pl_df.columns]
+    return pl_df.select(keep)
 
 st.session_state["logo_cache"] = {}
 
@@ -115,7 +130,7 @@ st.markdown(
 
 left, right = st.columns([1,3])
 with left:
-    seasons = st.multiselect("Seasons", list(range(2009, 2031)), default=[2024])
+    seasons = st.multiselect("Seasons", list(range(2010, 2031)), default=[2025])
     week_min, week_max = st.slider("Week range", 1, 22, (1, 18))
     position = st.selectbox("Position", ["QB", "WR", "RB", "TE", "K", "Team Offense", "Team Defense", "Team Overall"])
     show_trend = st.checkbox("Show trend line", value=True)
@@ -130,9 +145,21 @@ if not seasons:
     st.stop()
 
 # ---------------- data load and features ----------------
+# 1) Load as Polars (cheap)
+pbp_pl = load_pbp(seasons)
 
-pbp = load_pbp(seasons)
-pbp = pbp[(pbp["week"] >= week_min) & (pbp["week"] <= week_max)].copy()
+# 2) Filter weeks while still in Polars (cheap)
+pbp_pl = pbp_pl.filter((pl.col("week") >= week_min) & (pl.col("week") <= week_max))
+
+# 3) Convert to pandas only now (for the rest of your existing pandas code)
+pbp = pbp_pl.to_pandas()
+
+run = st.button("Load / refresh data", type="primary")
+
+if not run:
+    st.info("Pick filters then click **Load / refresh data**.")
+    st.stop()
+
 
 # normalize flags
 pbp["pass_attempt"]   = (pbp.get("pass_attempt", 0) == 1).astype(int)
@@ -419,5 +446,6 @@ st.pyplot(fig, clear_figure=False)
 
 # Download button
 st.download_button("Download chart PNG", data=png_bytes, file_name="nfl_graph.png", mime="image/png")
+
 
 

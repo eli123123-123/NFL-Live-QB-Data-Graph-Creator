@@ -18,3 +18,4 @@ runOnSave = false
 
 [theme]
 base = "dark"
+fileWatcherType = "none"

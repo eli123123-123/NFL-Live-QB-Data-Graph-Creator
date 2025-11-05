@@ -1,3 +1,7 @@
+# Fix for Render build (pyarrow)
+pyarrow==14.0.1
+numpy==1.26.4
+pandas==2.2.3
 streamlit==1.37.1
 nflreadpy==0.1.4
 pandas==2.2.3
@@ -7,3 +11,4 @@ pillow==10.4.0
 requests==2.32.3
 pyarrow==16.1.0
 duckdb==1.1.3
+

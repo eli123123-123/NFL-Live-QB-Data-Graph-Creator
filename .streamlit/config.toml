@@ -8,3 +8,13 @@ maxUploadSize = 50
 base = "dark"
 
 #add stremalit config
+[server]
+headless = true
+enableCORS = true
+enableXsrfProtection = true
+maxUploadSize = 50
+fileWatcherType = "none"   # <-- important: prevents reload loops in Docker
+runOnSave = false
+
+[theme]
+base = "dark"

@@ -12,6 +12,12 @@ from matplotlib.ticker import MaxNLocator, MultipleLocator
 import os
 STRIPE_SECRET = os.getenv("STRIPE_SECRET", "")
 ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
+import pandas as pd
+
+def col_or_zero(df: pd.DataFrame, name: str) -> pd.Series:
+    """Return df[name] if it exists, else a zero Series aligned to df.index."""
+    return df[name] if name in df.columns else pd.Series(0, index=df.index)
+
 
 
 # ---------------- constants and helpers ----------------
@@ -144,42 +150,37 @@ with left:
 if not seasons:
     st.stop()
 
-# ---------------- data load and features ----------------
-# 1) Load as Polars (cheap)
-pbp_pl = load_pbp(seasons)
-
-# 2) Filter weeks while still in Polars (cheap)
-pbp_pl = pbp_pl.filter((pl.col("week") >= week_min) & (pl.col("week") <= week_max))
-
-# 3) Convert to pandas only now (for the rest of your existing pandas code)
-pbp = pbp_pl.to_pandas()
-
 run = st.button("Load / refresh data", type="primary")
-
 if not run:
     st.info("Pick filters then click **Load / refresh data**.")
     st.stop()
 
+# only load after the user clicks
+pbp_pl = load_pbp(seasons)
+pbp_pl = pbp_pl.filter((pl.col("week") >= week_min) & (pl.col("week") <= week_max))
+pbp = pbp_pl.to_pandas()
 
-# normalize flags
-pbp["pass_attempt"]   = (pbp.get("pass_attempt", 0) == 1).astype(int)
-pbp["complete_pass"]  = (pbp.get("complete_pass", 0) == 1).astype(int)
-pbp["rush_attempt"]   = (pbp.get("rush_attempt", 0) == 1).astype(int)
+
+# normalize flags (safe even if columns are missing)
+pbp["pass_attempt"]   = (col_or(pbp, "pass_attempt") == 1).astype(int)
+pbp["complete_pass"]  = (col_or(pbp, "complete_pass") == 1).astype(int)
+pbp["rush_attempt"]   = (col_or(pbp, "rush_attempt") == 1).astype(int)
+
 pbp["dropback"] = (
-    (pbp.get("pass", 0) == 1) |
-    (pbp.get("sack", 0) == 1) |
-    (pbp.get("qb_scramble", 0) == 1) |
-    (pbp.get("scramble", 0) == 1)
+    (col_or(pbp, "pass") == 1) |
+    (col_or(pbp, "sack") == 1) |
+    (col_or(pbp, "qb_scramble") == 1) |
+    (col_or(pbp, "scramble") == 1)
 ).astype(int)
-pbp["success"]        = (pbp.get("epa", 0.0) > 0).astype(int)
-pbp["explosive_pass"] = ((pbp.get("yards_gained", 0) >= 20) & (pbp["pass_attempt"] == 1)).astype(int)
-pbp["explosive_rush"] = ((pbp.get("yards_gained", 0) >= 10) & (pbp["rush_attempt"] == 1)).astype(int)
-pbp["rz"]             = (pbp.get("yardline_100", 100) <= 20).astype(int)
-pbp["third"]          = (pbp.get("down", 0) == 3).astype(int)
-pbp["fourth"]         = (pbp.get("down", 0) == 4).astype(int)
-pbp["pressure"]       = ((pbp.get("qb_hit", 0) == 1) | (pbp.get("sack", 0) == 1) | (pbp.get("pressure", 0) == 1)).astype(int)
 
-def pick(cols, candidates):
+pbp["success"]        = (col_or(pbp, "epa", 0.0) > 0).astype(int)
+pbp["explosive_pass"] = ((col_or(pbp, "yards_gained") >= 20) & (pbp["pass_attempt"] == 1)).astype(int)
+pbp["explosive_rush"] = ((col_or(pbp, "yards_gained") >= 10) & (pbp["rush_attempt"] == 1)).astype(int)
+pbp["rz"]             = (col_or(pbp, "yardline_100", 100) <= 20).astype(int)
+pbp["third"]          = (col_or(pbp, "down") == 3).astype(int)
+pbp["fourth"]         = (col_or(pbp, "down") == 4).astype(int)
+pbp["pressure"]       = ((col_or(pbp, "qb_hit") == 1) | (col_or(pbp, "sack") == 1) | (col_or(pbp, "pressure") == 1)).astype(int)
+
     for c in candidates:
         if c in cols: return c
     return None
@@ -446,6 +447,7 @@ st.pyplot(fig, clear_figure=False)
 
 # Download button
 st.download_button("Download chart PNG", data=png_bytes, file_name="nfl_graph.png", mime="image/png")
+
 
 
 

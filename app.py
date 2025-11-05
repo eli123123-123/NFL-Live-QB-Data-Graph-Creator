@@ -181,9 +181,9 @@ pbp["third"]          = (col_or(pbp, "down") == 3).astype(int)
 pbp["fourth"]         = (col_or(pbp, "down") == 4).astype(int)
 pbp["pressure"]       = ((col_or(pbp, "qb_hit") == 1) | (col_or(pbp, "sack") == 1) | (col_or(pbp, "pressure") == 1)).astype(int)
 
-    for c in candidates:
-        if c in cols: return c
-    return None
+for c in candidates:
+    if c in cols: return c
+return None
 
 cols = set(pbp.columns)
 pid_qb   = pick(cols, ["passer_player_id", "passer_id"])
@@ -447,6 +447,7 @@ st.pyplot(fig, clear_figure=False)
 
 # Download button
 st.download_button("Download chart PNG", data=png_bytes, file_name="nfl_graph.png", mime="image/png")
+
 
 
 
